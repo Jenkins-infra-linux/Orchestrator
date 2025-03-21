@@ -514,8 +514,6 @@ crontab -l  # 크론탭 확인
 <br>
 
 
-![mysql_backup 파일에 cron으로 설정된 시간에 잘 들어왔음을 확인할 수 있었습니다.](attachment:da5b948e-7c6b-418e-a20b-6186c58c723e:image.png)
-
 mysql_backup 파일에 cron으로 설정된 시간에 잘 들어왔음을 확인할 수 있었습니다.
 
 <br>
