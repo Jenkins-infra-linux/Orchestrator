@@ -219,10 +219,10 @@ Master_SSL_Verify_Server_Cert: No
             Network_Namespace:
 
 ```
-
+### 실행 결과
+![Image](https://github.com/user-attachments/assets/aef99b48-29c4-4fb9-a449-1e7105038911)
 <br>
 <br>
-
 
 ## 방법 2.  MySQL 자동 백업 컨테이너 (로컬 Dump 저장)
 
