@@ -662,33 +662,61 @@ UNLOCK TABLES;
 <br>
 ### <슬레이브 DB 테이블구조>
 ![Image](https://github.com/user-attachments/assets/3c408ec9-9852-4fd1-b67a-331f3c8cde22)
+<br><br>
 
-구조가 달라서 마스터 DB에 데이터를 insert 해도 슬레이브 DB에서 확인 불가능 <br>
 ![Image](https://github.com/user-attachments/assets/bf5caeab-7f53-4675-b02d-53524c370209)
+<br>
+➡️구조가 달라서 마스터 DB에 데이터를 insert 해도 슬레이브 DB에서 확인 불가능
 <br><br>
 
 
-구조를 변경해줘도 슬레이브 DB가 동기화 되지않았고, 슬레이브 DB의 status를 확인해보니 yes / no가 되어있음
+
 ![Image](https://github.com/user-attachments/assets/c66d8969-d0e4-4474-b36c-01781d798e99)
+<br>
+➡️구조를 변경해줘도 슬레이브 DB가 동기화 되지않았고, 슬레이브 DB의 status를 확인해보니 yes / no가 되어있음
 
-구조변경 후 mysql-master의 status도 변경되기 때문에 확인후 꼭 변경해주어야 함
-변경된 mister DB의 status
+<br><br>
+
 ![Image](https://github.com/user-attachments/assets/e40cfd61-a240-49c6-8fef-f759fb98f1af)
+<br>
+➡️구조변경 후 mysql-master의 status도 변경되기 때문에 확인후 꼭 변경해주어야 함
+<br>
+➡️변경된 mister DB의 status
+<br><br>
 
-slave DB에서 마스터 설정을 변경해준다
+
 ![Image](https://github.com/user-attachments/assets/8e788e3f-1ecc-4e07-8d91-a2435c54d525)
+<br>
+➡️slave DB에서 마스터 설정을 변경해준다
 
-아래 명령어를 사용후 슬레이브 DB 재설정후 실행
+
+
 ```
 start slave 
 ```
+➡️명령어를 사용후 슬레이브 DB 재설정후 실행
+
 
 <br>
-yes/yes로 잘 설정된것을 확인!<br>
-![Image](https://github.com/user-attachments/assets/689e2771-14de-494d-809f-47cbfbc23ce5)
+<br>
 
-마스터에서 데이터 삽입<br>
+
+![image](https://github.com/user-attachments/assets/38125a90-663b-43a6-9831-d193fcc88f3f)
+<br>
+➡️yes/yes로 잘 설정된것을 확인!
+
+<br><br>
+
+
 ![Image](https://github.com/user-attachments/assets/f8ea687c-1cae-47d9-9203-757b937f9a0f)
 <br>
-제대로 들어간 것 확인👏<br>
+➡️마스터에서 데이터 삽입
+
+
+<br><br>
+
+
+
 ![Image](https://github.com/user-attachments/assets/38562f61-1866-4dae-8996-1b00f9e0f7ec)
+<br>
+➡️제대로 들어간 것 확인👏
