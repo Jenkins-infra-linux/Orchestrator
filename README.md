@@ -1,4 +1,28 @@
 # Orchestrator
+## 🤝 Team Members
+| <img src="https://github.com/kcklkb.png" width="200px"> | <img src="https://github.com/woody6624.png" width="200px"> | <img src="https://github.com/parkjhhh.png" width="200px"> | <img src="https://github.com/unoYoon.png" width="200px"> |
+| :---: | :---: | :---: | :---: |
+| [김창규](https://github.com/kcklkb) | [김우현](https://github.com/woody6624) | [박지혜](https://github.com/parkjhhh) | [윤원호](https://github.com/unoYoon) |
+
+---
+### 📊프로젝트 소개
+
+**Docker Compose** 및 **스크립트**를 활용하여 컨테이너를 손쉽게 관리하고 시스템 장애 시 빠르게 복구할 수 있는 환경을 제공하고자 했습니다. 또한, 서비스 및 데이터의 **고가용성**을 확보하기 위해 MySQL DB **이중화** 및 데이터 **백업 자동화**를 구현했습니다. 두 개의 MySQL DB 컨테이너를 생성하여 데이터의 가용성을 높이고, **볼륨 마운트**를 통해 **데이터 지속성**을 보장합니다.
+
+---
+### 🎯프로젝트 목표
+
+1. **서비스 자동화**:
+    - `docker-compose down`과 `docker-compose up`을 통해 자동으로 컨테이너를 관리하고 재시작.
+2. **MySQL 이중화 및 고가용성 보장**
+    - 두 개의 MySQL 컨테이너를 운영하여 하나의 컨테이너가 장애 시 다른 컨테이너가 서비스를 지속하도록 설정.
+3. **데이터 백업 및 지속성 확보:**
+    - Docker 볼륨을 사용하여 데이터 지속성을 보장하고 외부에 데이터 백업을 자동화
+  
+---
+### 💻개발환경
+
+<img src="https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" /> <img src="https://img.shields.io/badge/VMware-607078?style=for-the-badge&logo=vmware&logoColor=white" alt="VMware" /> <img src="https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white" alt="Ubuntu" /> <img src="https://img.shields.io/badge/JDK-007396?style=for-the-badge&logo=openjdk&logoColor=white" alt="JDK" />
 
 
 ---
