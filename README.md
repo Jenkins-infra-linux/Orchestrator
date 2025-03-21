@@ -26,7 +26,7 @@
 
 
 ---
-## MySQL 마스터-슬레이브 레플리케이션 설정 및 동기화 완료
+## 방법 1. MySQL 마스터-슬레이브 레플리케이션 설정 및 동기화 완료
 
 ### docker-compose.yml
 
@@ -219,3 +219,432 @@ Master_SSL_Verify_Server_Cert: No
             Network_Namespace:
 
 ```
+
+<br>
+<br>
+
+
+## 방법 2.  MySQL 자동 백업 컨테이너 (로컬 Dump 저장)
+
+<br>
+
+### 1단계 - 실행 스크립트: `run.sh`
+
+**목표:** `docker-compose.yml`, `Dockerfile`, 애플리케이션 파일을 기반으로 한 실행 스크립트를 만들어서 불필요한 리소스를 정리하고 컨테이너를 실행합니다.
+
+```jsx
+#!/bin/bash
+
+# 사용하지 않는 컨테이너, 이미지, 네트워크, 볼륨 모두 정리
+docker image prune -f     # 사용되지 않는 이미지 삭제
+docker container prune -f # 중지된 컨테이너 삭제
+
+# 컨테이너 실행
+docker-compose up -d      # docker-compose로 컨테이너 백그라운드 실행
+```
+
+<br>
+
+
+### 스크립트 설명:
+
+1. **`docker image prune -f`**: 사용되지 않는 **Docker 이미지**를 삭제하여 디스크 공간을 확보합니다.
+2. **`docker container prune -f`**: **중지된 Docker 컨테이너**를 삭제하여 불필요한 리소스를 정리합니다.
+3. **`docker-compose up -d`**: `docker-compose.yml` 파일을 기반으로 **백그라운드에서 컨테이너를 실행**합니다.
+
+<br>
+
+
+### 사용 방법:
+
+1. `run.sh` 파일을 생성한 후, 해당 파일에 실행 권한을 부여합니다.
+    
+    ```bash
+    chmod +x run.sh
+    ```
+    
+2. 스크립트를 실행합니다.
+    
+    ```bash
+    ./run.sh
+    ```
+    
+
+이 스크립트는 **컨테이너 실행 전에** **불필요한 리소스를 정리**하여, 
+
+깔끔한 상태에서 새롭게 컨테이너를 실행할 수 있도록 돕습니다. 
+
+`docker-compose.yml`과 `Dockerfile`을 준비한 후, 이 스크립트 하나로 
+
+컨테이너와 이미지를 관리할 수 있습니다.
+
+<br>
+
+
+### **1. `docker-compose.yml` (MySQL + Spring Boot + 백업 설정)**
+
+```yaml
+docker-compose.yaml
+복사편집
+version: "1.0"
+
+services:
+  db:
+    container_name: mysqldb
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: fisa
+      MYSQL_USER: user01
+      MYSQL_PASSWORD: user01
+    networks:
+      - spring-mysql-net
+    healthcheck:
+      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 -u root --password=$${MYSQL_ROOT_PASSWORD} || exit 1']
+      interval: 10s
+      timeout: 2s
+      retries: 100
+    volumes:
+      - ./mysql_backup:/backup  # ✅ 로컬 디렉토리에 백업 저장
+
+  app:
+    container_name: springbootapp
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: fisa
+      MYSQL_USER: user01
+      MYSQL_PASSWORD: user01
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - spring-mysql-net
+
+networks:
+  spring-mysql-net:
+    driver: bridge
+```
+
+---
+
+<br>
+
+
+### **2. `Dockerfile` (Spring Boot 앱 컨테이너 설정)**
+
+<br>
+
+
+```
+Dockerfile
+
+# Base Imge 설정
+FROM openjdk:17-slim
+
+# curl 설치 (slim 이미지에는 기본적으로 없음)
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
+# 작업 디렉토리 설정
+WORKDIR /app
+
+# 애플리케이션 JAR 파일 복사
+COPY step06_SpringDataJPA-0.0.1-SNAPSHOT.jar app.jar
+
+# 환경 변수 설정 (포트 변경이 용이하도록)
+ENV SERVER_PORT=8080
+
+# 헬스 체크 설정 (curl을 사용하여 애플리케이션이 정상 작동하는지 확인)
+HEALTHCHECK --interval=10s --timeout=30s --retries=3 CMD curl -f http://localhost:${SERVER_PORT}/one || exit 1
+
+# 애플리케이션 실행 (exec 방식 사용)
+ENTRYPOINT ["java", "-jar", "app.jar"]
+```
+
+---
+
+ ****
+
+ <br>
+
+
+### **3. `backup.sh` (MySQL 데이터베이스 백업 스크립트)**
+
+<br>
+
+
+```
+#!/bin/bash
+
+# 현재 날짜를 기준으로 백업 파일 이름 설정
+TIMESTAMP=$(date +"%Y%m%d%H%M%S")
+BACKUP_FILE="./mysql_backup/db_backup_$TIMESTAMP.sql"
+
+# MySQL 백업 실행
+docker exec mysqldb mysqldump -u root -proot fisa > "$BACKUP_FILE"
+
+# 오래된 백업 파일(7일 이상된 파일) 자동 삭제
+find ./mysql_backup/ -type f -mtime +7 -exec rm {} \;
+```
+
+✅ `./mysql_backup/` 디렉토리에 **백업 파일 저장**
+
+✅ **7일 이상된 백업 파일 자동 삭제**
+
+---
+
+<br>
+
+
+### **4. `run.sh` (모든 컨테이너 실행 스크립트)**
+
+<br>
+
+
+```
+#!/bin/bash
+
+# 기존 컨테이너 정리
+docker-compose down
+
+# 컨테이너 실행
+docker-compose up -d
+
+# 백업 디렉토리 확인 및 생성
+mkdir -p mysql_backup
+```
+
+✅ 실행하면 **기존 컨테이너를 종료하고 다시 시작**
+
+✅ **백업 폴더(`mysql_backup/`)가 없으면 자동 생성**
+
+---
+
+<br>
+
+
+### **5. 크론탭 설정 (1시간마다 자동 백업 실행)**
+
+<br>
+
+
+1. 크론탭 편집:
+    
+    ```
+    crontab -e
+    ```
+    
+2. 아래 내용 추가 (1시간마다 `backup.sh` 실행):
+    
+    ```
+    0 * * * * /path/to/backup.sh
+    ```
+    
+
+---
+
+<br>
+
+
+## **💡 실행 방법**
+
+<br>
+
+
+### **1️⃣ 프로젝트 실행**
+
+<br>
+
+
+```
+chmod +x run.sh
+./run.sh
+```
+
+<br>
+
+
+### **2️⃣ 수동 백업 실행**
+
+<br>
+
+
+```
+chmod +x backup.sh
+./backup.sh
+```
+
+<br>
+
+
+### **3️⃣ 자동 백업 활성화**
+
+<br>
+
+
+```
+crontab -l  # 크론탭 확인
+```
+
+---
+
+<br>
+
+
+## **📌 정리**
+
+<br>
+
+
+✅ **MySQL 컨테이너 기반 데이터 백업**
+
+✅ **`mysqldump`로 1시간마다 자동 백업**
+
+✅ **7일 이상된 백업 파일 자동 삭제**
+
+✅ **Spring Boot & MySQL 컨테이너와 함께 동작**
+
+<br>
+
+
+![mysql_backup 파일에 cron으로 설정된 시간에 잘 들어왔음을 확인할 수 있었습니다.](attachment:da5b948e-7c6b-418e-a20b-6186c58c723e:image.png)
+
+mysql_backup 파일에 cron으로 설정된 시간에 잘 들어왔음을 확인할 수 있었습니다.
+
+<br>
+
+
+```jsx
+-- MySQL dump 10.13  Distrib 8.0.41, for Linux (x86_64)
+--
+-- Host: localhost    Database: fisa
+-- ------------------------------------------------------
+-- Server version	8.0.41
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `people`
+--
+
+DROP TABLE IF EXISTS `people`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `people` (
+  `no` bigint NOT NULL,
+  `age` int NOT NULL,
+  `people_name` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `people`
+--
+
+LOCK TABLES `people` WRITE;
+/*!40000 ALTER TABLE `people` DISABLE KEYS */;
+/*!40000 ALTER TABLE `people` ENABLE KEYS */;
+UNLOCK TABLES;
+
+--
+-- Table structure for table `people_seq`
+--
+
+DROP TABLE IF EXISTS `people_seq`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `people_seq` (
+  `next_val` bigint DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `people_seq`
+--
+
+LOCK TABLES `people_seq` WRITE;
+/*!40000 ALTER TABLE `people_seq` DISABLE KEYS */;
+INSERT INTO `people_seq` VALUES (1);
+/*!40000 ALTER TABLE `people_seq` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2025-03-21  2:14:28
+
+```
+
+<br>
+
+
+### 백업 결과 확인 (Dump 파일 정보)
+
+<br>
+
+
+1. **데이터베이스 정보**:
+   
+    - 데이터베이스: `fisa`
+      
+    - MySQL 버전: 8.0.41
+      
+    - 문자셋: `utf8mb4`
+      
+2. **백업된 테이블**:
+   
+    - `people`: 이 테이블은 `no`, `age`, `people_name` 컬럼을 가지며, `no` 컬럼이 기본 키로 설정되어 있습니다.
+      
+    - `people_seq`: 이 테이블은 `next_val` 컬럼을 가지며, 값은 `1`로 설정되어 있습니다.
+      
+3. **백업 파일 생성 확인**:
+   
+    - 덤프 파일은 MySQL `mysqldump` 명령어로 생성된 SQL 스크립트 형식입니다.
+      
+    - 생성된 파일은 `fisa` 데이터베이스에 포함된 두 개의 테이블에 대한 구조와 데이터를 포함하고 있습니다.
+
+<br>
+
+
+### 다음 단계
+
+<br>
+
+
+1. **백업 파일 복원**:
+   
+    - 백업된 데이터를 MySQL에 복원하려면 다음 명령어를 사용합니다:
+        
+        ```bash
+        mysql -u root -p fisa < /path/to/backup/file.sql
+        ```
+        
+
+2. **백업 스크립트 점검**:
+   
+    - 스크립트가 주기적으로 실행되도록 설정한 크론탭은 정상적으로 작동한 것으로 보입니다. 백업 파일이 예상대로 생성되었음을 확인했으며, 이 파일을 사용해 복원 작업도 가능할 것입니다.
+    
+이로써 MySQL 데이터베이스의 주기적인 백업을 위한 작업이 정상적으로 진행되고 있음을 확인할 수 있습니다.
