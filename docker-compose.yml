@@ -1,0 +1,45 @@
+version: "1.0"
+
+services:
+  db:
+    container_name: mysqldb
+    image: mysql:8.0
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: fisa
+      MYSQL_USER: user01
+      MYSQL_PASSWORD: user01
+    networks:
+      - spring-mysql-net
+    healthcheck:
+      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 -u root --password=$${MYSQL_ROOT_PASSWORD} || exit 1']
+      interval: 10s
+      timeout: 2s
+      retries: 100
+    volumes:
+      - ./mysql_backup:/backup  # ✅ 로컬 디렉토리에 백업 저장
+
+  app:
+    container_name: springbootapp
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
+      MYSQL_DATABASE: fisa
+      MYSQL_USER: user01
+      MYSQL_PASSWORD: user01
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - spring-mysql-net
+
+networks:
+  spring-mysql-net:
+    driver: bridge
